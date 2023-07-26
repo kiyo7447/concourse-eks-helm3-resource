@@ -1,4 +1,4 @@
-FROM alpine:3.10 as build
+FROM alpine:3.18 as build
 LABEL maintainer="Konkerlabs, Andre Rocha <andre@konkerlabs.com>"
 
 RUN apk add --update --no-cache ca-certificates git
@@ -18,29 +18,35 @@ RUN curl -L https://get.helm.sh/${FILENAME} > ${FILENAME} && \
 
 
 
-FROM alpine:3.8
+FROM alpine:3.18
 
-ARG KUBERNETES_VERSION=1.15.12
+#ARG KUBERNETES_VERSION=1.27.3
+#$(curl -LS https://dl.k8s.io/release/stable.txt)
 ARG AWS_IAM_AUTHENTICATOR_VERSION=0.3.0
 
 RUN apk add --update --no-cache git ca-certificates
 
 COPY --from=build /tmp/linux-amd64/helm /bin/helm
 
-RUN apk add --update --upgrade --no-cache jq bash curl && \
-    apk -v --update add \
-            python \
-            py-pip \
+RUN apk update
+RUN apk add ca-certificates
+RUN update-ca-certificates
+RUN apk add --update --upgrade --no-cache jq bash curl
+RUN  apk -v --update add \
+            python3 \
+            py3-pip \
             groff \
             less \
-            mailcap \
-            && \
-            pip install --upgrade awscli==1.16.93 s3cmd==2.0.1 python-magic && \
-            apk -v --purge del py-pip && \
-            rm /var/cache/apk/* && \
-    curl -L -o /usr/local/bin/aws-iam-authenticator https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/v${AWS_IAM_AUTHENTICATOR_VERSION}/heptio-authenticator-aws_${AWS_IAM_AUTHENTICATOR_VERSION}_linux_amd64 && \
-    chmod +x /usr/local/bin/aws-iam-authenticator && \
-    curl -L -o /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/v${KUBERNETES_VERSION}/bin/linux/amd64/kubectl; \
+            mailcap
+
+RUN pip install --upgrade awscli==1.16.93 s3cmd==2.3.0 python-magic
+
+RUN apk -v --purge del py3-pip
+RUN rm /var/cache/apk/*
+RUN curl -L -o /usr/local/bin/aws-iam-authenticator https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/v${AWS_IAM_AUTHENTICATOR_VERSION}/heptio-authenticator-aws_${AWS_IAM_AUTHENTICATOR_VERSION}_linux_amd64
+RUN chmod +x /usr/local/bin/aws-iam-authenticator
+#RUN curl -k -LS https://dl.k8s.io/release/stable.txt
+RUN curl -k -L -o /usr/local/bin/kubectl https://dl.k8s.io/release/$(curl -k -LS https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl; \
     chmod +x /usr/local/bin/kubectl
 
 ADD assets /opt/resource
